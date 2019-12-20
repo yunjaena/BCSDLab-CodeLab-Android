@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<HashMap<String, String>> musicHashMapList;
     private SimpleAdapter simpleAdapter;
     private ArrayList<Music> musicList;
-    private int currentPlayingPosition = 0;
+    private int currentPlayingPosition;
 
 
     @Override
@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init() {
+        currentPlayingPosition = -1;
         mediaPlayer = new MediaPlayer();
         musicList = new ArrayList<>();
         musicHashMapList = new ArrayList<>();
@@ -69,6 +70,49 @@ public class MainActivity extends AppCompatActivity {
                 playMusic(position);
             }
         });
+
+        musicPlayButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentPlayingPosition == -1) {
+                    playMusic(0);
+                    currentPlayingPosition = 0;
+                    return;
+                }
+
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                    musicPlayButton.setBackgroundResource(android.R.drawable.ic_media_play);
+                } else {
+                    mediaPlayer.start();
+                    musicPlayButton.setBackgroundResource(android.R.drawable.ic_media_pause);
+                }
+            }
+        });
+
+
+        musicNextButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentPlayingPosition + 1 >= musicList.size())
+                    currentPlayingPosition = 0;
+                else currentPlayingPosition++;
+
+                playMusic(currentPlayingPosition);
+            }
+        });
+
+        musicPreviousButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentPlayingPosition - 1 < 0)
+                    currentPlayingPosition = musicList.size() - 1;
+                else currentPlayingPosition--;
+
+                playMusic(currentPlayingPosition);
+            }
+        });
+
         requestRuntimePermission();
         if (isPermitted) getMusicFileList();
 
@@ -167,6 +211,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 음악 재생을 해주는 메소드
+     *
      * @param index 재생 위치를 보내준다.
      */
     public void playMusic(int index) {
@@ -188,4 +233,13 @@ public class MainActivity extends AppCompatActivity {
         mediaPlayer.start();
     }
 
+    /**
+     * MediaPlayer 리소스 반환
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mediaPlayer.stop();
+        mediaPlayer.release();
+    }
 }
