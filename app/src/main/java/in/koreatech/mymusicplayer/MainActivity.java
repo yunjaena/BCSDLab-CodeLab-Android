@@ -1,9 +1,5 @@
 package in.koreatech.mymusicplayer;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
@@ -12,11 +8,17 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,10 +35,13 @@ public class MainActivity extends AppCompatActivity {
     private Button musicNextButton;
     private ListView musicListView;
 
+    private MediaPlayer mediaPlayer;
     private boolean isPermitted;
     private ArrayList<HashMap<String, String>> musicHashMapList;
     private SimpleAdapter simpleAdapter;
     private ArrayList<Music> musicList;
+    private int currentPlayingPosition = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init() {
+        mediaPlayer = new MediaPlayer();
         musicList = new ArrayList<>();
         musicHashMapList = new ArrayList<>();
         musicTitleTextView = findViewById(R.id.music_title_textview);
@@ -56,6 +62,13 @@ public class MainActivity extends AppCompatActivity {
         simpleAdapter = new SimpleAdapter(this, musicHashMapList, android.R.layout.simple_expandable_list_item_2, new String[]{"title", "singer"},
                 new int[]{android.R.id.text1, android.R.id.text2});
         musicListView.setAdapter(simpleAdapter);
+        musicListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                currentPlayingPosition = position;
+                playMusic(position);
+            }
+        });
         requestRuntimePermission();
         if (isPermitted) getMusicFileList();
 
@@ -150,6 +163,29 @@ public class MainActivity extends AppCompatActivity {
             musicHashMapList.add(musicInfoHashMap);
         }
         simpleAdapter.notifyDataSetChanged();
+    }
+
+    /**
+     * 음악 재생을 해주는 메소드
+     * @param index 재생 위치를 보내준다.
+     */
+    public void playMusic(int index) {
+        if (index >= musicList.size() || index < 0) return;
+        mediaPlayer.stop();
+        mediaPlayer.reset();
+        Uri musicUri = Uri.parse(musicList.get(index).getFilePath());
+        try {
+            mediaPlayer.setDataSource(MainActivity.this, musicUri);
+            mediaPlayer.setLooping(true);
+            mediaPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(getApplicationContext(), "음악재생에 실패했습니다.", Toast.LENGTH_SHORT).show();
+        }
+
+        musicTitleTextView.setText(musicList.get(index).getTitle());
+        musicPlayButton.setBackgroundResource(android.R.drawable.ic_media_pause);
+        mediaPlayer.start();
     }
 
 }
