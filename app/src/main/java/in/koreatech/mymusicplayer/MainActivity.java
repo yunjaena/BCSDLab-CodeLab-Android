@@ -6,11 +6,24 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import static android.os.Environment.getExternalStoragePublicDirectory;
 
 public class MainActivity extends AppCompatActivity {
     public final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
@@ -21,6 +34,9 @@ public class MainActivity extends AppCompatActivity {
     private ListView musicListView;
 
     private boolean isPermitted;
+    private ArrayList<HashMap<String, String>> musicHashMapList;
+    private SimpleAdapter simpleAdapter;
+    private ArrayList<Music> musicList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,12 +46,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init() {
+        musicList = new ArrayList<>();
+        musicHashMapList = new ArrayList<>();
         musicTitleTextView = findViewById(R.id.music_title_textview);
         musicPreviousButton = findViewById(R.id.music_previous_button);
         musicPlayButton = findViewById(R.id.music_play_button);
         musicNextButton = findViewById(R.id.music_next_button);
         musicListView = findViewById(R.id.music_list_listview);
+        simpleAdapter = new SimpleAdapter(this, musicHashMapList, android.R.layout.simple_expandable_list_item_2, new String[]{"title", "singer"},
+                new int[]{android.R.id.text1, android.R.id.text2});
+        musicListView.setAdapter(simpleAdapter);
         requestRuntimePermission();
+        if (isPermitted) getMusicFileList();
+
+
     }
 
 
@@ -57,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 퍼미션의 결과를 가져옵니다.
      * 읽기 권한이 성공이 되었을 경우 isPermitted를 true로 아닐 경우에는 isPermitted를 false로 만들어 줍니다.
-     * 읽기 권한이 성공했을때 음악리스틀 가져옵니다.
+     * 읽기 권한이 성공했을때 음악리스트를 가져옵니다.
      *
      * @param requestCode
      * @param permissions
@@ -71,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     isPermitted = true;
+                    getMusicFileList();
                 } else {
                     isPermitted = false;
 
@@ -79,4 +104,52 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * 음악파일 리스트를 가져온다.
+     * 파일리스트를 가져온후 음악 파일 리스트를 업데이트를 해준다.
+     */
+    public void getMusicFileList() {
+        File musicFolder = getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC); // Music 공용 폴더에서 파일정보를 가져옵니다.
+
+        // musicFolder list가 null 일경우 return;
+        if (musicFolder.listFiles() == null) return;
+        musicList.clear();
+
+        // 음악 리스트에서 음악 파일 정보를 가져옵니다.
+        for (File musicFile : musicFolder.listFiles()) {
+            MediaMetadataRetriever md = new MediaMetadataRetriever(); // 메타정보를 뽑아오는 class
+            md.setDataSource(musicFile.getAbsolutePath()); // 메타 정보를 음악 절대 경로를 통해서 받아온다.
+
+            String singer = md.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST); // 아티스트 정보를 가져온다.
+            if (singer == null || singer.equals(""))
+                singer = "Unknown";
+
+            String songtitle = md.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE); // 음악파일 제목을 가져온다.
+            if (songtitle == null)
+                songtitle = musicFile.getName();
+
+            Music music = new Music();  // 음악 class의 새로운 객체를 만들어서 정보를 추가한다.
+            music.setTitle(songtitle);
+            music.setArtist(singer);
+            music.setFilePath(musicFile.getAbsolutePath());
+            musicList.add(music); // 리스트에 추가한다.
+        }
+        updateListView();
+    }
+
+    /**
+     * 음악 정보를 가져와서 리스트로 출력을 합니다.
+     */
+    public void updateListView() {
+        musicHashMapList.clear();
+        for (Music music : musicList) {
+            HashMap<String, String> musicInfoHashMap = new HashMap<>();
+            musicInfoHashMap.put("title", music.getTitle());
+            musicInfoHashMap.put("singer", music.getArtist());
+            musicHashMapList.add(musicInfoHashMap);
+        }
+        simpleAdapter.notifyDataSetChanged();
+    }
+
 }
